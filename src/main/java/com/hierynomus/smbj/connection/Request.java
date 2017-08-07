@@ -15,6 +15,7 @@
  */
 package com.hierynomus.smbj.connection;
 
+import com.hierynomus.mssmb2.SMB2Header;
 import com.hierynomus.mssmb2.SMB2Packet;
 import com.hierynomus.protocol.commons.concurrent.Promise;
 import com.hierynomus.smbj.common.SMBRuntimeException;
@@ -35,8 +36,8 @@ class Request {
     private final Promise<SMB2Packet, SMBRuntimeException> promise;
     private final long messageId;
     private final UUID cancelId;
-    private SMB2Packet requestPacket;
     private final Date timestamp;
+    private final SMB2Header header;
     private long asyncId;
 
     public long getAsyncId() {
@@ -47,10 +48,10 @@ class Request {
         this.asyncId = asyncId;
     }
 
-    public Request(long messageId, UUID cancelId, SMB2Packet requestPacket) {
-        this.messageId = messageId;
+    public Request(SMB2Header requestHeader, UUID cancelId) {
+        this.messageId = requestHeader.getMessageId();
         this.cancelId = cancelId;
-        this.requestPacket = requestPacket;
+        this.header = requestHeader;
         timestamp = new Date();
         this.promise = new Promise<>(String.valueOf(messageId), SMBRuntimeException.Wrapper);
     }
@@ -59,8 +60,8 @@ class Request {
         return promise;
     }
 
-    SMB2Packet getRequestPacket() {
-        return requestPacket;
+    SMB2Header getHeader() {
+        return header;
     }
 
     long getMessageId() {
@@ -81,7 +82,7 @@ class Request {
                         // Already done or cancelled
                         return false;
                     } else {
-                        callback.cancel(messageId);
+                        callback.cancel(Request.this);
                         return true;
                     }
                 } catch (Throwable t) {
@@ -136,6 +137,6 @@ class Request {
     }
 
     interface CancelCallback {
-        void cancel(long messageId);
+        void cancel(Request request);
     }
 }
